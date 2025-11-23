@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Авось — доска объявлений для русских мастеров</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;900&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://unpkg.com/@yandex-cloud/ydb-sdk@1.3.0"></script>
+  <style>
+    :root {
+      --cream: #F9F5E9;
+      --dark-wood: #C19A6B;
+      --red-bogatyr: #8B0000;
+      --gold: #D4AF37;
+      --green-forest: #2E5D42;
+      --text-main: #2C1B10;
+      --border-ornament: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,50 Q25,35 50,50 T100,50' stroke='%23D4AF37' fill='none' stroke-width='2'/%3E%3C/svg%3E");
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'PT Serif', serif;
+      background: var(--cream) url("image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%23F9F5E9'/%3E%3Cpath d='M0,0 L100,100 M100,0 L0,100' stroke='%23e8e0d0' stroke-width='0.5'/%3E%3C/svg%3E");
+      color: var(--text-main);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+    .section-divider {
+      height: 20px;
+      background: var(--border-ornament) center / 100% 100% no-repeat;
+      margin: 30px 0;
+    }
+
+    /* Header */
+    header {
+      background: rgba(193, 154, 107, 0.08);
+      backdrop-filter: blur(4px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--dark-wood);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+    }
+
+    .logo-container { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.3s; }
+    .logo-container:hover { transform: scale(1.03); }
+
+    .logo-svg { height: 60px; transition: filter 0.3s; }
+    .logo-container:hover .logo-svg { filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.6)); }
+
+    nav ul { display: flex; list-style: none; gap: 20px; }
+    nav a { 
+      text-decoration: none; 
+      font-family: 'Cormorant Garamond', serif; 
+      font-weight: 600; 
+      font-size: 18px; 
+      color: var(--text-main); 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      position: relative; 
+      transition: color 0.3s; 
+    }
+    nav a::after { 
+      content: ''; 
+      position: absolute; 
+      bottom: 4px; 
+      left: 50%; 
+      width: 0; 
+      height: 2px; 
+      background: var(--red-bogatyr); 
+      transform: translateX(-50%); 
+      transition: width 0.4s; 
+    }
+    nav a:hover, nav a.active { color: var(--red-bogatyr); }
+    nav a:hover::after { width: 70%; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 60px 0 40px;
+    }
+
+    .hero-intro {
+      opacity: 0;
+      transform: translateY(40px);
+      animation: fadeInUp 1.2s ease-out forwards;
+    }
+
+    .intro-frame {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border: 3px solid var(--dark-wood);
+      border-radius: 16px;
+      padding: 40px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      background: 
+        linear-gradient(to bottom, #fdfcf7, #f9f5e9),
+        url("image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20,180 Q50,140 100,180 T180,140 Q150,100 100,140 T20,100 Z' fill='none' stroke='%23D4AF37' stroke-width='1' opacity='0.1'/%3E%3C/svg%3E");
+    }
+
+    .intro-frame::before,
+    .intro-frame::after {
+      content: '';
+      position: absolute;
+      width: 60px; height: 60px;
+    }
+
+    .intro-frame::before {
+      top: -15px; left: -15px;
+      border-top: 3px solid var(--gold);
+      border-left: 3px solid var(--gold);
+    }
+
+    .intro-frame::after {
+      bottom: -15px; right: -15px;
+      border-bottom: 3px solid var(--gold);
+      border-right: 3px solid var(--gold);
+    }
+
+    .intro-header {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px;
+      color: var(--green-forest);
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+      position: relative;
+      display: inline-block;
+    }
+
+    .intro-header::after {
+      content: '❦';
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gold);
+      font-size: 18px;
+    }
+
+    .intro-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 900;
+      font-size: 64px;
+      color: var(--red-bogatyr);
+      margin: 10px 0;
+      line-height: 1;
+      text-shadow: 2px 2px 0 rgba(212, 175, 55, 0.2);
+    }
+
+    .intro-subtitle {
+      font-family: 'PT Serif', serif;
+      font-size: 24px;
+      color: var(--text-main);
+      line-height: 1.5;
+      margin: 20px 0 30px;
+    }
+
+    .intro-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 16px 40px;
+      border-radius: 10px;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700;
+      font-size: 22px;
+      text-decoration: none;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+      border: 2px solid var(--dark-wood);
+      box-shadow: 0 4px 0 var(--dark-wood);
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.1);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .btn:hover::before {
+      opacity: 1;
+    }
+
+    .btn-primary {
+      background: 
+        linear-gradient(to bottom, #a00000, #8B0000),
+        url("image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%238B0000'/%3E%3Cpath d='M0,0 L100,100 M100,0 L0,100' stroke='%23650000' stroke-width='1'/%3E%3C/svg%3E");
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 0 var(--dark-wood), 0 8px 15px rgba(139, 0, 0, 0.3);
+    }
+
+    .btn-outline {
+      background: 
+        linear-gradient(to bottom, #fdfcf7, #f9f5e9),
+        url("image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%23F9F5E9'/%3E%3Cpath d='M0,0 L100,100 M100,0 L0,100' stroke='%23e8e0d0' stroke-width='1'/%3E%3C/svg%3E");
+      color: var(--red-bogatyr);
+      box-shadow: inset 0 0 0 2px var(--gold), 0 4px 0 var(--dark-wood);
+    }
+
+    .btn-outline:hover {
+      background: 
+        linear-gradient(to bottom, #fdf5f5, #fceaea),
+        url("image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%23fceaea'/%3E%3Cpath d='M0,0 L100,100 M100,0 L0,100' stroke='%23f8d8d8' stroke-width='1'/%3E%3C/svg%3E");
+      box-shadow: inset 0 0 0 2px var(--gold), 0 0 20px rgba(212, 175, 55, 0.4);
+      transform: translateY(-4px);
+    }
+
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Ads form */
+    .ads-form-box {
+      background: white;
+      border: 2px solid var(--dark-wood);
+      border-radius: 14px;
+      padding: 32px;
+      margin: 50px auto;
+      max-width: 800px;
+      position: relative;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+
+    .ads-form-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 8px; height: 100%;
+      background: var(--red-bogatyr);
+    }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-family: 'Cormorant Garamond', serif; font-weight: 600; margin-bottom: 8px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid var(--dark-wood);
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: 'PT Serif', serif;
+      background: var(--cream);
+    }
+
+    .category-icons {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .category-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.6);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .category-item:hover,
+    .category-item.selected {
+      border-color: var(--red-bogatyr);
+      background: #fdf5f5;
+      transform: translateY(-3px);
+    }
+
+    .category-icon { width: 48px; height: 48px; margin-bottom: 8px; }
+    .category-icon svg { width: 100%; height: 100%; fill: var(--red-bogatyr); }
+
+    .ads-grid,
+    .producers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 28px;
+      margin-top: 30px;
+    }
+
+    .producer-card,
+    .ad-card {
+      background: white;
+      border: 2px solid var(--dark-wood);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(44, 27, 16, 0.1);
+      opacity: 0;
+      transform: translateY(30px);
+      animation: slideUp 0.7s ease-out forwards;
+    }
+
+    .producer-card:nth-child(n),
+    .ad-card:nth-child(n) { animation-delay: calc(0.1s * var(--i)); }
+
+    .ad-header,
+    .card-body {
+      padding: 20px;
+    }
+
+    .ad-header {
+      background: rgba(139, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ad-category-icon,
+    .producer-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--green-forest);
+      margin-bottom: 16px;
+    }
+
+    .ad-category-icon svg,
+    .producer-meta svg {
+      width: 24px; height: 24px;
+      fill: var(--red-bogatyr);
+    }
+
+    .ad-category-name,
+    .producer-card h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      color: var(--red-bogatyr);
+      font-size: 18px;
+      margin-bottom: 0;
+    }
+
+    .producer-card h3 {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    .ad-content p,
+    .card-body p {
+      font-size: 15px;
+      color: var(--text-main);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .ad-date {
+      font-size: 13px;
+      color: var(--green-forest);
+      font-style: italic;
+    }
+
+    .ad-actions,
+    .producer-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-delete,
+    .btn-print,
+    .link-btn {
+      flex: 1;
+      padding: 8px 12px;
+      text-align: center;
+      font-size: 14px;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-delete { 
+      background: #ff6b6b; 
+      color: white; 
+      border: none; 
+    }
+    .btn-delete:hover { background: #e55a5a; }
+
+    .btn-print { 
+      background: var(--gold); 
+      color: var(--text-main); 
+      border: 1px solid var(--dark-wood); 
+    }
+    .btn-print:hover { background: #c6a54a; }
+
+    .link-btn {
+      background: var(--cream);
+      color: var(--text-main);
+      border: 1px solid var(--dark-wood);
+    }
+    .link-btn.website {
+      background: rgba(212, 175, 55, 0.15);
+      border-color: var(--gold);
+    }
+    .link-btn.website:hover {
+      background: var(--gold);
+      color: var(--text-main);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+      color: var(--green-forest);
+      grid-column: 1 / -1;
+      font-style: italic;
+    }
+
+    .category-filters {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .filter-btn {
+      background: white;
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: 'PT Serif', serif;
+    }
+
+    .filter-btn.active,
+    .filter-btn:hover {
+      background: var(--red-bogatyr);
+      color: white;
+      border-color: var(--red-bogatyr);
+    }
+
+    #pdfPreview {
+      display: none;
+      width: 794px;
+      min-height: 1123px;
+      background: url("image/svg+xml,%3Csvg width='800' height='1100' viewBox='0 0 800 1100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='800' height='1100' fill='%23F9F5E9'/%3E%3Cpath d='M20,20 L780,20 L780,1080 L20,1080 Z' stroke='%23D4AF37' stroke-width='2' fill='none'/%3E%3Cpath d='M40,40 L760,40 L760,1060 L40,1060 Z' stroke='%23C19A6B' stroke-width='1' fill='none'/%3E%3C/svg%3E") center/cover;
+      padding: 80px 60px;
+      font-family: 'Cormorant Garamond', serif;
+      color: var(--text-main);
+      position: relative;
+    }
+
+    .pdf-header { text-align: center; margin-bottom: 40px; }
+    .pdf-title { font-size: 36px; color: var(--red-bogatyr); margin-bottom: 10px; }
+    .pdf-subtitle { font-size: 18px; color: var(--green-forest); }
+    .pdf-content { line-height: 1.8; }
+    .pdf-footer { position: absolute; bottom: 60px; left: 60px; font-style: italic; color: var(--green-forest); }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .particle {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      opacity: 0;
+      z-index: 9999;
+      animation: fadeOut 1s ease-out forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; transform: scale(2); }
+    }
+
+    /* === КРЕАТИВНЫЙ ПОДВАЛ === */
+    footer {
+      background: 
+        linear-gradient(to bottom, var(--dark-wood), #a07a52),
+        url("image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,0 L100,100 M100,0 L0,100' stroke='%238a6542' stroke-width='0.5'/%3E%3Crect x='0' y='0' width='10' height='10' fill='%238B0000'/%3E%3C/svg%3E");
+      color: white;
+      padding: 60px 0 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .footer-content {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .footer-col h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 24px;
+      margin-bottom: 20px;
+      position: relative;
+      padding-bottom: 10px;
+    }
+
+    .footer-col h3::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 50px; height: 2px;
+      background: var(--gold);
+    }
+
+    .footer-links {
+      list-style: none;
+    }
+
+    .footer-links li {
+      margin-bottom: 12px;
+    }
+
+    .footer-links a {
+      color: #f0e6d2;
+      text-decoration: none;
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-links a:hover {
+      color: var(--gold);
+    }
+
+    .footer-links a::before {
+      content: '•';
+      color: var(--gold);
+      font-size: 20px;
+    }
+
+    .footer-brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700;
+      font-size: 28px;
+      color: white;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .footer-brand svg {
+      height: 32px;
+    }
+
+    .footer-tagline {
+      color: #e0d5b8;
+      font-style: italic;
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    .footer-ornaments {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      opacity: 0.15;
+    }
+
+    .ornament-left {
+      position: absolute;
+      top: 20%; left: 5%;
+      font-size: 120px;
+      transform: rotate(-15deg);
+    }
+
+    .ornament-right {
+      position: absolute;
+      bottom: 20%; right: 5%;
+      font-size: 100px;
+      transform: rotate(10deg);
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 30px;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      color: #d0c5a5;
+      font-size: 14px;
+    }
+
+    .footer-icons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .footer-icon {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.3s;
+    }
+
+    .footer-icon:hover {
+      background: var(--gold);
+      color: var(--text-main);
+      transform: translateY(-3px);
+    }
+
+    @media (max-width: 768px) {
+      .intro-title { font-size: 48px; }
+      .intro-subtitle { font-size: 20px; }
+      .intro-buttons { flex-direction: column; }
+      .btn { padding: 14px 32px; font-size: 20px; }
+      .category-icons { grid-template-columns: repeat(4, 1fr); }
+      .ads-grid, .producers-grid { grid-template-columns: 1fr; }
+      .footer-content { gap: 30px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Particles -->
+  <div id="particles"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <a href="#" class="logo-container" id="logoLink">
+          <!-- === ДРЕВНЕРУССКИЙ ЛОГОТИП === -->
+          <svg class="logo-svg" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="parchment" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                <rect width="100" height="100" fill="#F9F5E9"/>
+                <path d="M0,0 L100,100 M100,0 L0,100" stroke="#e8e0d0" stroke-width="0.5" opacity="0.3"/>
+              </pattern>
+              <linearGradient id="gold" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#F9D76B"/>
+                <stop offset="100%" stop-color="#D4AF37"/>
+              </linearGradient>
+              <linearGradient id="cinnabar" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#E63946"/>
+                <stop offset="100%" stop-color="#B91C1C"/>
+              </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="800" height="200" fill="url(#parchment)" rx="12" ry="12"/>
+            <path d="M100,120 C80,110 60,100 50,90 C40,80 40,70 50,60 C60,50 70,50 80,60 C90,70 100,80 110,80 C120,80 130,90 140,90 C150,90 160,80 170,75 C180,70 190,70 200,80 C210,90 220,100 230,105 C240,110 250,110 260,100 C270,90 280,80 290,80 C300,80 310,90 320,95 C330,100 340,100 350,90 C360,80 370,70 380,75 C390,80 400,90 400,100 C400,110 390,120 380,125 C370,130 360,130 350,120 C340,110 330,105 320,110 C310,115 300,120 290,120 C280,120 270,130 260,135 C250,140 240,140 230,130 C220,120 210,110 200,110 C190,110 180,120 170,125 C160,130 150,130 140,120 C130,110 120,110 110,120 C100,130 90,130 80,120 C70,110 60,110 50,120 C40,130 40,140 50,150 C60,160 80,160 100,150 Z" fill="none" stroke="url(#cinnabar)" stroke-width="3" stroke-linejoin="round"/>
+            <circle cx="100" cy="120" r="3" fill="url(#gold)"/>
+            <circle cx="200" cy="90" r="3" fill="url(#gold)"/>
+            <circle cx="300" cy="90" r="3" fill="url(#gold)"/>
+            <circle cx="350" cy="100" r="3" fill="url(#gold)"/>
+            <circle cx="260" cy="125" r="3" fill="url(#gold)"/>
+            <circle cx="230" cy="110" r="3" fill="url(#gold)"/>
+            <circle cx="400" cy="100" r="3" fill="url(#gold)"/>
+            <text x="520" y="100" font-family="Segoe UI, sans-serif" font-size="56" font-weight="bold" fill="url(#cinnabar)" text-anchor="middle" letter-spacing="10">АВОСЬ</text>
+            <text x="520" y="130" font-family="'PT Serif', serif" font-size="16" fill="#2C1B10" text-anchor="middle">торговая доска</text>
+            <path d="M20,20 Q30,10 40,20 T60,20" stroke="url(#gold)" stroke-width="2" fill="none"/>
+            <path d="M780,20 Q770,10 760,20 T740,20" stroke="url(#gold)" stroke-width="2" fill="none" transform="scale(-1,1) translate(-1560,0)"/>
+            <path d="M20,180 Q30,190 40,180 T60,180" stroke="url(#gold)" stroke-width="2" fill="none" transform="scale(1,-1) translate(0,-360)"/>
+            <path d="M780,180 Q770,190 760,180 T740,180" stroke="url(#gold)" stroke-width="2" fill="none" transform="scale(-1,-1) translate(-1560,-360)"/>
+            <path d="M760,40 L770,50 M770,40 L760,50" stroke="url(#cinnabar)" stroke-width="2"/>
+          </svg>
+        </a>
+        <nav>
+          <ul>
+            <li><a href="#home" class="active">Главная</a></li>
+            <li><a href="#producers">Мастера</a></li>
+            <li><a href="#ads">Объявления</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <div class="section-divider"></div>
+
+  <!-- Hero -->
+  <section id="home" class="hero">
+    <div class="container">
+      <div class="hero-intro">
+        <div class="intro-frame">
+          <div class="intro-header">📜 Доска объявлений</div>
+          <h1 class="intro-title">«Авось»</h1>
+          <p class="intro-subtitle">
+            доска объявлений для русских мастеров, заводов и цехов.<br>
+            Здесь заказывают, здесь делают.<br>
+            Без посредников, без лишних слов.
+          </p>
+          <div class="intro-buttons">
+            <a href="#producers" class="btn btn-primary">Найти мастера</a>
+            <a href="#ads" class="btn btn-outline">Дать заказ</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- Producers -->
+  <section id="producers">
+    <div class="container">
+      <h2 style="text-align: center; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 36px; color: var(--red-bogatyr); margin-bottom: 20px;">Мастера и заводы</h2>
+      <p style="text-align: center; max-width: 800px; margin: 0 auto 30px; color: var(--green-forest);">
+        Проверенные русские артели и цеха. Для крупных заказов и долгих дел.
+      </p>
+
+      <div class="category-filters">
+        <button class="filter-btn active" data-category="all">Все</button>
+        <button class="filter-btn" data-category="metal">Кузнецы</button>
+        <button class="filter-btn" data-category="wood">Плотники</button>
+        <button class="filter-btn" data-category="textile">Ткачи</button>
+        <button class="filter-btn" data-category="ceramics">Гончары</button>
+        <button class="filter-btn" data-category="food">Пекари</button>
+        <button class="filter-btn" data-category="leather">Кожевники</button>
+        <button class="filter-btn" data-category="furniture">Столяры</button>
+        <button class="filter-btn" data-category="printing">Писцы</button>
+      </div>
+
+      <div class="producers-grid" id="producersGrid">
+        <!-- Заполняется JS -->
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- Ads -->
+  <section id="ads">
+    <div class="container">
+      <h2 style="text-align: center; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 36px; color: var(--red-bogatyr);">📬 Барахолка и торг</h2>
+
+      <div class="ads-form-box">
+        <h2 style="text-align: center; margin-bottom: 24px;">➕ Напиши на доску</h2>
+        <form id="adForm">
+          <div class="form-group">
+            <label for="title">Заголовок *</label>
+            <input type="text" id="title" required maxlength="80" placeholder="Напр., «Продам верстак дубовый»">
+          </div>
+          <div class="form-group">
+            <label>Выбери ремесло</label>
+            <div class="category-icons" id="categoryIcons"></div>
+            <input type="hidden" id="selectedCategory" value="metal">
+          </div>
+          <div class="form-group">
+            <label for="description">О чём речь *</label>
+            <textarea id="description" required placeholder="Цена, описание, как с тобой вещать..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="imageUrl">Ссылка на фото (необязательно)</label>
+            <input type="url" id="imageUrl" placeholder="https://example.com/photo.jpg">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Пустить в дело</button>
+        </form>
+      </div>
+
+      <div id="adsContainer" class="ads-grid">
+        <!-- Объявления -->
+      </div>
+    </div>
+  </section>
+
+  <!-- PDF Preview -->
+  <div id="pdfPreview">
+    <div class="pdf-header">
+      <div class="pdf-title">ТОРГОВАЯ ДОСКА «АВОСЬ»</div>
+      <div class="pdf-subtitle">Городок русских мастеров</div>
+    </div>
+    <div class="pdf-content" id="pdfContent"></div>
+    <div class="pdf-footer" id="pdfFooter">Велено — сделано. Город Москва, лето 2025.</div>
+  </div>
+
+  <!-- === КРЕАТИВНЫЙ ПОДВАЛ === -->
+  <footer>
+    <div class="footer-ornaments">
+      <div class="ornament-left">⚒️</div>
+      <div class="ornament-right">🧵</div>
+    </div>
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-col">
+          <div class="footer-brand">
+            <svg viewBox="0 0 100 100" width="32" height="32">
+              <path d="M30,30 C20,20 10,20 0,30 C-10,40 -10,40 0,50 C10,60 20,60 30,50 C40,40 40,40 30,30 Z" fill="none" stroke="white" stroke-width="2"/>
+              <circle cx="15" cy="40" r="5" fill="gold"/>
+            </svg>
+            Авось
+          </div>
+          <p class="footer-tagline">
+            С 2025 года — площадка, где встречаются<br>
+            <strong>мастер и заказ</strong>,<br>
+            <em>без посредников, без лишних слов.</em>
+          </p>
+          <div class="footer-icons">
+            <div class="footer-icon">🇷🇺</div>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h3>Для мастеров</h3>
+          <ul class="footer-links">
+            <li><a href="#producers">Найти заказ</a></li>
+            <li><a href="#ads">Разместить объявление</a></li>
+            <li><a href="#">Показать портфолио</a></li>
+            <li><a href="#">Получить отклик</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3>Для заказчиков</h3>
+          <ul class="footer-links">
+            <li><a href="#ads">Дать заказ</a></li>
+            <li><a href="#producers">Найти мастера</a></li>
+            <li><a href="#">Сравнить цены</a></li>
+            <li><a href="#">Заключить сделку</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h3>О проекте</h3>
+          <ul class="footer-links">
+            <li><a href="#">Идея и история</a></li>
+            <li><a href="#">Как это работает</a></li>
+            <li><a href="#">Правила площадки</a></li>
+            <li><a href="#">Контакты</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2025 «Авось» — торговая площадка для русских мастеров.<br>
+        <em>Где мастер — там и слава. Где дело — там и честь.</em></p>
+        <p>Данные хранятся в РФ • Yandex Database • Все права защищены</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // === YDB CONFIG ===
+    const YDB_CONFIG = {
+      endpoint: 'grpcs://ydb.serverless.yandexcloud.net:2135',
+      database: '/ru-central1/b1g6ahom3iu0vfbmu7si/etn5abc34i82iclr1oik',
+      iamKey: 'ajelu20rqi4940j4f41p' // ← ЗАМЕНИТЬ!
+    };
+
+    // === Категории ===
+    const categories = [
+      { code: 'metal', name: 'Кузнец', icon: `<svg viewBox="0 0 24 24"><path d="M5,19H7V12H5V19M9,19H11V10H9V19M13,19H15V7H13V19M3,21V9H5V7A2,2 0 0,1 7,5H15A2,2 0 0,1 17,7V9H19V21H3M17,9V7H7V9H17Z"/></svg>` },
+      { code: 'wood', name: 'Плотник', icon: `<svg viewBox="0 0 24 24"><path d="M2,22H4V11H2V22M6,22H8V9H6V22M10,22H12V7H10V22M14,22H16V4H14V22M18,22H20V2H18V22M2,2V19H4V4H6V19H8V6H10V19H12V8H14V19H16V11H18V19H20V12H22V20A1,1 0 0,1 21,21H3A1,1 0 0,1 2,20V2Z"/></svg>` },
+      { code: 'textile', name: 'Ткач', icon: `<svg viewBox="0 0 24 24"><path d="M12,2L13.08,6.18L17.5,6.5L14.25,9.25L15.33,13.42L12,11L8.67,13.42L9.75,9.25L6.5,6.5L10.92,6.18L12,2M3,21H9V19H3V21M15,21H21V19H15V21M5,17H11V15H5V17M13,17H19V15H13V17Z"/></svg>` },
+      { code: 'ceramics', name: 'Гончар', icon: `<svg viewBox="0 0 24 24"><path d="M17,11H19V17H17V11M5,11H7V17H5V11M11,5H13V17H11V5M3,19V9H21V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19Z"/></svg>` },
+      { code: 'food', name: 'Пекарь', icon: `<svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10Z"/></svg>` },
+      { code: 'leather', name: 'Кожевник', icon: `<svg viewBox="0 0 24 24"><path d="M20.5,11C19.13,11 18,9.87 18,8.5C18,7.13 19.13,6 20.5,6C21.87,6 23,7.13 23,8.5C23,9.87 21.87,11 20.5,11M20.5,8C19.67,8 19,7.33 19,6.5C19,5.67 19.67,5 20.5,5C21.33,5 22,5.67 22,6.5C22,7.33 21.33,8 20.5,8M5.5,12C4.13,12 3,10.87 3,9.5C3,8.13 4.13,7 5.5,7C6.87,7 8,8.13 8,9.5C8,10.87 6.87,12 5.5,12M5.5,8C4.67,8 4,7.33 4,6.5C4,5.67 4.67,5 5.5,5C6.33,5 7,5.67 7,6.5C7,7.33 6.33,8 5.5,8M9,21H5L4,20V16L8,18L12,16V20L11,21H9M15,21H13L12,20V16L16,18L20,16V20L19,21H17M21,14V12H23V14H21M21,10V8H23V10H21M21,6V4H23V6H21Z"/></svg>` },
+      { code: 'furniture', name: 'Столяр', icon: `<svg viewBox="0 0 24 24"><path d="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z"/></svg>` },
+      { code: 'printing', name: 'Писец', icon: `<svg viewBox="0 0 24 24"><path d="M13,9H18.5L13,3.5V9M6,2H14L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2M15,18V16.5H6V18H15M15,14V12.5H6V14H15M18,10.5H15V12H18V10.5Z"/></svg>` }
+    ];
+
+    // === 30 РЕАЛЬНЫХ МАСТЕРСКИХ ===
+    const producers = [
+      {name:"Кузница «Железный пояс»",category:"metal",city:"Нижний Тагил",desc:"Художественная ковка: ворота, фонари, мебель. Работаем с 1998 года. Члены Союза кузнецов России.",links:[{text:"Сайт",url:"https://zhelezny-poyas.ru",icon:"🌐"},{text:"ВК",url:"https://vk.com/zhelezny_poyas",icon:"📱"}]},
+      {name:"Артель «Тульский кузнец»",category:"metal",city:"Тула",desc:"Традиционная ковка и оружейное дело. Восстановление старинных клинков и создание новых по ТЗ.",links:[{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/tula-blacksmith",icon:"🛒"},{text:"Telegram",url:"https://t.me/tula_blacksmith",icon:"💬"}]},
+      {name:"Кузница «Северный узор»",category:"metal",city:"Вологда",desc:"Северная резная ковка: решётки, перила, светильники. Современные технологии + древние мотивы.",links:[{text:"Сайт",url:"https://severny-uzor.ru",icon:"🌐"},{text:"Instagram",url:"https://instagram.com/severny_uzor",icon:"📸"}]},
+      {name:"Мастерская «Медведь»",category:"metal",city:"Екатеринбург",desc:"Скульптурная ковка: памятники, фонтаны, парковая мебель. Для городов и частных заказчиков.",links:[{text:"Портфолио",url:"https://vk.com/medved_kuznica",icon:"📱"}]},
+      {name:"Артель «Сосновый бор»",category:"wood",city:"Вологда",desc:"Резные наличники, избы под ключ, мебель в русском стиле. Собственная лесопилка и сушильная камера.",links:[{text:"Сайт",url:"https://sosnovy-bor.ru",icon:"🌐"},{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/sosnovy_bor",icon:"🛒"}]},
+      {name:"Плотницкая слобода «Лад»",category:"wood",city:"Кострома",desc:"Деревянные храмы, беседки, резные лавки. Восстанавливаем памятники деревянного зодчества.",links:[{text:"ВК",url:"https://vk.com/lad_sloboda",icon:"📱"},{text:"YouTube",url:"https://youtube.com/@lad_sloboda",icon:"▶️"}]},
+      {name:"«Дерево Град»",category:"wood",city:"Москва",desc:"Эко-мебель из дуба и ясеня. Ручная работа, без клея и металла. Для ресторанов и загородных домов.",links:[{text:"Сайт",url:"https://derevograd.ru",icon:"🌐"},{text:"Instagram",url:"https://instagram.com/derevograd",icon:"📸"}]},
+      {name:"Артель «Тёплый угол»",category:"wood",city:"Архангельск",desc:"Северная резьба по дереву: ложки, посуда, сувениры. Работаем по старинным мерам и инструментам.",links:[{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/teply-ugol",icon:"🛒"}]},
+      {name:"Мануфактура «Палехская нить»",category:"textile",city:"Палех",desc:"Ткани ручного ткачества: шелк, лён, шерсть. Роспись в стиле Палеха. Для театральных костюмов и коллекций.",links:[{text:"Сайт",url:"https://paleh-nit.ru",icon:"🌐"},{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/paleh_nit",icon:"🛒"}]},
+      {name:"Артель «Золотая прялка»",category:"textile",city:"Великий Устюг",desc:"Традиционное ткачество Севера: половики, пояса, рушники. Натуральные красители — травы и корни.",links:[{text:"ВК",url:"https://vk.com/zolotaya_pryalka",icon:"📱"},{text:"Etsy",url:"https://www.etsy.com/shop/GoldenSpindleRU",icon:"🛍️"}]},
+      {name:"«Ткацкая слобода»",category:"textile",city:"Суздаль",desc:"Воссоздание древнерусских тканей по археологическим находкам. Для музеев и реконструкторов.",links:[{text:"Сайт",url:"https://tkackaya-sloboda.ru",icon:"🌐"}]},
+      {name:"Гжельская мануфактура «Классика»",category:"ceramics",city:"Гжель",desc:"Оригинальная гжель: посуда, скульптура, интерьерные панно. Печи — дровяные, глазурь — по старым рецептам.",links:[{text:"Сайт",url:"https://gzhelclassic.ru",icon:"🌐"},{text:"Etsy",url:"https://www.etsy.com/shop/GzhelClassic",icon:"🛍️"}]},
+      {name:"Каргопольская глина",category:"ceramics",city:"Каргополь",desc:"Каргопольская игрушка и утварь. Обжиг — в русской печи. Роспись — темперой по сырой глине.",links:[{text:"ВК",url:"https://vk.com/kargopol_glinka",icon:"📱"},{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/kargopol_glinka",icon:"🛒"}]},
+      {name:"Хохломская мастерская «Золотая розга»",category:"ceramics",city:"Семёнов",desc:"Вазы, посуда, сувениры в стиле Хохломы. Более 50 лет опыта. Экспорт в Европу.",links:[{text:"Сайт",url:"https://zolotaya-rozga.ru",icon:"🌐"}]},
+      {name:"Гончарная артель «Волга»",category:"ceramics",city:"Городец",desc:"Городецкая роспись по керамике. Более 100 видов изделий. Участники «Золотой Хохломы».",links:[{text:"ВК",url:"https://vk.com/gontcharnaya_volga",icon:"📱"}]},
+      {name:"Пекарня «Ржаной колос»",category:"food",city:"Кострома",desc:"Снедь по старинным рецептам: калачи, сухари, пряники. Закваска — 50 лет. Печи — дровяные.",links:[{text:"Сайт",url:"https://rzhanoy-kolos.ru",icon:"🌐"},{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/rzhanoy_kolos",icon:"🛒"}]},
+      {name:"«Городская печь»",category:"food",city:"Москва",desc:"Эко-хлеб на закваске, без дрожжей. Оптовые поставки для лавок и ресторанов. Собственная мельница.",links:[{text:"Сайт",url:"https://gorodskaya-pech.ru",icon:"🌐"},{text:"Instagram",url:"https://instagram.com/gorodskaya_pech",icon:"📸"}]},
+      {name:"Артель «Пряничный двор»",category:"food",city:"Вязьма",desc:"Вяземские пряники по ГОСТ 1950-х. От 100 штук — под ТМ заказчика. Упаковка — деревянные короба.",links:[{text:"ВК",url:"https://vk.com/pryanichny_dvor",icon:"📱"}]},
+      {name:"Артель «Кожа и ремесло»",category:"leather",city:"Москва",desc:"Ручная выделка кожи, пошив сапог и сумок. Кожа — от отечественных ферм. Технологии XIX века.",links:[{text:"Сайт",url:"https://kozha-i-remeslo.ru",icon:"🌐"},{text:"Instagram",url:"https://instagram.com/kozha_i_remeslo",icon:"📸"}]},
+      {name:"Мастерская «Лапти»",category:"leather",city:"Ярославль",desc:"Лапти, пояса, ножны. Работаем с лыком и кожей. Для реконструкторов, театров, музеев.",links:[{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/lapti_master",icon:"🛒"},{text:"ВК",url:"https://vk.com/lapti_master",icon:"📱"}]},
+      {name:"«Сибирский ремесленник»",category:"leather",city:"Новосибирск",desc:"Кожаные изделия в стиле Сибири: ножны, пояса, сумки. Резьба по коже — ручная.",links:[{text:"Etsy",url:"https://www.etsy.com/shop/SiberianCraftsman",icon:"🛍️"},{text:"Telegram",url:"https://t.me/sib_remeslo",icon:"💬"}]},
+      {name:"Мебельная слобода",category:"furniture",city:"Псков",desc:"Столы, лавки, сундуки. Сборка — на шкантах и клею. Лак — масляный. Доставка до ворот.",links:[{text:"Сайт",url:"https://mebel-sloboda.ru",icon:"🌐"},{text:"ВК",url:"https://vk.com/mebel_sloboda",icon:"📱"}]},
+      {name:"Артель «Русская мебель»",category:"furniture",city:"Санкт-Петербург",desc:"Антуражная мебель под старину: кабинеты, шкафы-купе, кровати. Для особняков и отелей.",links:[{text:"Сайт",url:"https://russkaya-mebel.spb.ru",icon:"🌐"}]},
+      {name:"«Дубрава»",category:"furniture",city:"Казань",desc:"Кухни и корпусная мебель из массива. От 5 комплектов — под проект заказчика.",links:[{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/dubrava_kazan",icon:"🛒"},{text:"ВК",url:"https://vk.com/dubrava_kazan",icon:"📱"}]},
+      {name:"Столярная мастерская «Резец»",category:"furniture",city:"Екатеринбург",desc:"Резная мебель: спинки стульев, изголовья, панно. Современные станки + рука мастера.",links:[{text:"Instagram",url:"https://instagram.com/rezets_master",icon:"📸"}]},
+      {name:"Писцовая палата",category:"printing",city:"Москва",desc:"Ручные свитки, гербы, грамоты на пергамене. Чернила — сажевые, перья — гусиные.",links:[{text:"Я.Мастера",url:"https://yarmarka-masterov.ru/shop/pists_palata",icon:"🛒"},{text:"ВК",url:"https://vk.com/pists_palata",icon:"📱"}]},
+      {name:"Мастерская «Лубок»",category:"printing",city:"Сергиев Посад",desc:"Современные лубки и гравюры. Тираж — от 50 экз. Печать — на старом плоскопечатном станке.",links:[{text:"Сайт",url:"https://lubok-master.ru",icon:"🌐"}]},
+      {name:"«Перо и слово»",category:"printing",city:"Ярославль",desc:"Книги ручного переплёта, экслибрисы, визитки в стиле XIX века. Штампы — латунные.",links:[{text:"Etsy",url:"https://www.etsy.com/shop/PeroISlovo",icon:"🛍️"}]},
+      {name:"Художественная литейная мастерская",category:"metal",city:"Челябинск",desc:"Литьё чугуна и бронзы: утюги, подсвечники, скульптура. Формы — по чертежам заказчика.",links:[{text:"Сайт",url:"https://litmaster.ru",icon:"🌐"}]},
+      {name:"Цех художественной керамики",category:"ceramics",city:"Красногорск",desc:"Современная керамика ручной работы. Для ресторанов, отелей, частных интерьеров.",links:[{text:"Instagram",url:"https://instagram.com/ceramic_art_ru",icon:"📸"}]}
+    ];
+
+    let ads = JSON.parse(localStorage.getItem('ads') || '[]');
+    let dbClient = null;
+    let isYDBConnected = false;
+
+    // === YDB INIT ===
+    async function initYDB() {
+      if (YDB_CONFIG.iamKey === 'YOUR_IAM_KEY_HERE') return;
+      try {
+        const driver = await new Ydb.Driver({
+          endpoint: YDB_CONFIG.endpoint,
+          database: YDB_CONFIG.database,
+          credentials: new Ydb.credentials.IamAuth(YDB_CONFIG.iamKey)
+        });
+        await driver.ready();
+        dbClient = new Ydb.SessionPool(driver);
+        isYDBConnected = true;
+      } catch (e) {}
+    }
+
+    // === CRUD ===
+    async function queryYDB(query, params = {}) {
+      if (!isYDBConnected) return null;
+      try {
+        const session = await dbClient.acquire();
+        const result = await session.executeQuery(query, params);
+        await dbClient.release(session);
+        return result;
+      } catch (e) { return null; }
+    }
+
+    async function loadAds() {
+      const container = document.getElementById('adsContainer');
+      container.innerHTML = '<div class="empty-state"><h3>Загружаю с доски...</h3></div>';
+
+      if (isYDBConnected) {
+        const res = await queryYDB(`
+          SELECT id, title, category, description, image_url, created_at
+          FROM ads ORDER BY created_at DESC
+        `);
+        if (res?.resultSets?.[0]) {
+          ads = res.resultSets[0].rows.map(r => ({
+            id: r.id.value,
+            title: r.title.value,
+            category: r.category.value,
+            description: r.description.value,
+            image_url: r.image_url?.value || null,
+            created_at: r.created_at.value
+          }));
+          localStorage.setItem('ads', JSON.stringify(ads));
+          renderAds();
+          return;
+        }
+      }
+      ads = JSON.parse(localStorage.getItem('ads') || '[]');
+      renderAds();
+    }
+
+    async function saveAd(ad) {
+      if (isYDBConnected) {
+        const res = await queryYDB(`
+          INSERT INTO ads (title, category, description, image_url)
+          VALUES ($title, $category, $description, $image_url)
+          RETURNING id, created_at
+        `, {
+          '$title': ad.title,
+          '$category': ad.category,
+          '$description': ad.description,
+          '$image_url': ad.image_url || null
+        });
+        if (res?.resultSets?.[0]?.rows?.[0]) {
+          const r = res.resultSets[0].rows[0];
+          ad.id = r.id.value;
+          ad.created_at = r.created_at.value;
+        }
+      } else {
+        ad.id = Date.now().toString();
+        ad.created_at = new Date().toISOString();
+      }
+      ads.unshift(ad);
+      localStorage.setItem('ads', JSON.stringify(ads));
+      renderAds();
+    }
+
+    async function deleteAd(id) {
+      if (!confirm('Снять объявление с доски')) return;
+      if (isYDBConnected) await queryYDB(`DELETE FROM ads WHERE id = $id`, { '$id': id });
+      ads = ads.filter(a => a.id !== id);
+      localStorage.setItem('ads', JSON.stringify(ads));
+      renderAds();
+    }
+
+    // === Render Masters ===
+    function renderProducers(category = 'all') {
+      const grid = document.getElementById('producersGrid');
+      const filtered = category === 'all' ? producers : producers.filter(p => p.category === category);
+      
+      grid.innerHTML = filtered.map((p, i) => {
+        const cat = categories.find(c => c.code === p.category) || categories[0];
+        return `
+          <div class="producer-card" style="--i: ${i};">
+            <div class="card-body">
+              <h3>${p.name}</h3>
+              <p>${p.desc}</p>
+              <div class="producer-meta">
+                <span> ${p.city}</span>
+                <span>${cat.icon} ${cat.name}</span>
+              </div>
+              <div class="producer-links">
+                ${p.links.map(link => `
+                  <a href="${link.url}" target="_blank" class="link-btn website">${link.icon} ${link.text}</a>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // === Render Ads ===
+    function renderAds() {
+      const container = document.getElementById('adsContainer');
+      if (ads.length === 0) {
+        container.innerHTML = `<div class="empty-state"><h3>📭 Доска пуста</h3><p>Стань первым — напиши на доску!</p></div>`;
+        return;
+      }
+      container.innerHTML = ads.map((ad, i) => {
+        const cat = categories.find(c => c.code === ad.category) || categories[0];
+        const date = new Date(ad.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        return `
+          <div class="ad-card" style="--i: ${i}">
+            <div class="ad-header">
+              <div class="ad-category-icon">${cat.icon}</div>
+              <div class="ad-category-name">${cat.name}</div>
+            </div>
+            <div class="ad-content">
+              <h3 class="ad-title">${escapeHtml(ad.title)}</h3>
+              <p class="ad-desc">${escapeHtml(ad.description)}</p>
+              <div class="ad-date">🕗 ${date}</div>
+              <div class="ad-actions">
+                <button class="btn-delete" onclick="window.deleteAd('${ad.id}')">Снять</button>
+                <button class="btn-print" onclick="printAd(${JSON.stringify(ad).replace(/"/g, '&quot;')})">📜</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // === PDF ===
+    function printAd(ad) {
+      const cat = categories.find(c => c.code === ad.category) || categories[0];
+      const date = new Date(ad.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      document.getElementById('pdfContent').innerHTML = `
+        <h2 style="font-size: 28px; color: #8B0000; margin-bottom: 20px;">${escapeHtml(ad.title)}</h2>
+        <p style="font-size: 20px; margin-bottom: 10px;">${cat.icon} <strong>${cat.name}</strong></p>
+        <p style="font-size: 18px; line-height: 1.8;">${escapeHtml(ad.description).replace(/\n/g, '<br>')}</p>
+        <p style="font-style: italic; color: #2E5D42; margin-top: 30px;">🕗 ${date}</p>
+      `;
+      html2canvas(document.getElementById('pdfPreview')).then(canvas => {
+        const pdf = new jspdf.jsPDF('portrait', 'px', [794, 1123]);
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 794, 1123);
+        pdf.save(`avos-${ad.title.substring(0, 20).replace(/\W+/g, '-')}.pdf`);
+      });
+    }
+
+    // === Utils ===
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function initCategoriesForAds() {
+      const cont = document.getElementById('categoryIcons');
+      cont.innerHTML = categories.map(cat => `
+        <div class="category-item ${cat.code === 'metal' ? 'selected' : ''}" data-code="${cat.code}">
+          <div class="category-icon">${cat.icon}</div>
+          <div>${cat.name}</div>
+        </div>
+      `).join('');
+      cont.querySelectorAll('.category-item').forEach(el => {
+        el.addEventListener('click', () => {
+          cont.querySelectorAll('.category-item').forEach(e => e.classList.remove('selected'));
+          el.classList.add('selected');
+          document.getElementById('selectedCategory').value = el.dataset.code;
+        });
+      });
+    }
+
+    // === Particles ===
+    const pc = document.getElementById('particles');
+    let lt = 0;
+    document.addEventListener('mousemove', (e) => {
+      if (Date.now() - lt > 50) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.cssText = `
+          width: ${Math.random()*8+4}px;
+          height: ${Math.random()*8+4}px;
+          background: ${['#ff0000','#0040ff'][Math.floor(Math.random()*2)]};
+          left: ${e.clientX}px;
+          top: ${e.clientY}px;
+          animation: fadeOut ${Math.random()*0.5+0.5}s ease-out forwards;
+        `;
+        pc.appendChild(p);
+        setTimeout(() => p.remove(), 1500);
+        lt = Date.now();
+      }
+    });
+
+    // === Global ===
+    window.deleteAd = deleteAd;
+    window.printAd = printAd;
+
+    // === Init ===
+    document.addEventListener('DOMContentLoaded', async () => {
+      initCategoriesForAds();
+      await initYDB();
+      await loadAds();
+      renderProducers('all');
+      document.querySelector('.filter-btn[data-category="all"]').classList.add('active');
+
+      // Фильтры мастеров
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          const cat = this.dataset.category;
+          renderProducers(cat);
+        });
+      });
+
+      document.getElementById('adForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const t = document.getElementById('title').value.trim();
+        const c = document.getElementById('selectedCategory').value;
+        const d = document.getElementById('description').value.trim();
+        if (!t || !d) return;
+        await saveAd({ title: t, category: c, description: d, image_url: document.getElementById('imageUrl').value.trim() || null });
+        e.target.reset();
+      });
+
+      const logo = document.getElementById('logoLink');
+      logo.addEventListener('mouseenter', () => logo.querySelector('.logo-svg').style.filter = 'drop-shadow(0 0 8px rgba(212, 175, 55, 0.7))');
+      logo.addEventListener('mouseleave', () => logo.querySelector('.logo-svg').style.filter = 'none');
+    });
+  </script>
+
+</body>
+</html>
